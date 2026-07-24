@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useOrganization } from "@clerk/nextjs";
 import { useAutomations } from "@/components/dashboard/automations-context";
@@ -9,6 +10,14 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 export default function DashboardPage() {
   const { automations } = useAutomations();
   const { organization } = useOrganization();
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/connectors/status")
+      .then((res) => res.json())
+      .then((data) => setGoogleCalendarConnected(Boolean(data.google_calendar)))
+      .catch(() => setGoogleCalendarConnected(false));
+  }, []);
 
   const active = automations.filter((a) => a.status === "active").length;
   const needsAttention = automations.filter((a) => a.status === "error").length;
@@ -60,7 +69,11 @@ export default function DashboardPage() {
           <EmptyState />
         ) : (
           automations.map((automation) => (
-            <AutomationCard key={automation.id} automation={automation} />
+            <AutomationCard
+              key={automation.id}
+              automation={automation}
+              googleCalendarConnected={googleCalendarConnected}
+            />
           ))
         )}
       </div>
