@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { ConnectorIcon } from "@/components/icons/connector-icon";
 import { ToggleSwitch } from "@/components/dashboard/toggle-switch";
+import { TeamSection } from "@/components/dashboard/team-section";
 
 const apps = [
   { name: "Gmail", icon: "mail", connected: true },
@@ -62,6 +63,8 @@ export default function SettingsPage() {
           </button>
         </div>
       </section>
+
+      <TeamSection />
 
       <section className="mt-6 rounded-3xl bg-white/70 p-6 shadow-sm ring-1 ring-black/5 backdrop-blur-sm dark:bg-white/[0.03] dark:ring-white/10">
         <h2 className="text-base font-medium">Connected apps</h2>

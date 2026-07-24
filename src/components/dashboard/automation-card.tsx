@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useOrganization } from "@clerk/nextjs";
 import type { Automation } from "@/lib/automations";
 import { ConnectorIcon } from "@/components/icons/connector-icon";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ToggleSwitch } from "@/components/dashboard/toggle-switch";
+import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { useAutomations } from "@/components/dashboard/automations-context";
 
 const outcomeColor: Record<NonNullable<Automation["lastRun"]>["outcome"], string> = {
@@ -14,7 +17,21 @@ const outcomeColor: Record<NonNullable<Automation["lastRun"]>["outcome"], string
 };
 
 export function AutomationCard({ automation }: { automation: Automation }) {
-  const { toggleStatus } = useAutomations();
+  const { toggleStatus, approveAutomation, rejectAutomation, setAlwaysAllow } = useAutomations();
+  const { membership } = useOrganization();
+  const isAdmin = membership?.role === "org:admin";
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const hasConfirmRisk = automation.steps.some((s) => s.risk === "confirm");
+
+  const handleToggle = () => {
+    const turningOn = automation.status !== "active";
+    if (turningOn && hasConfirmRisk && !automation.alwaysAllow) {
+      setConfirmOpen(true);
+      return;
+    }
+    toggleStatus(automation.id);
+  };
 
   return (
     <div className="flex flex-col gap-4 rounded-3xl bg-white/70 p-6 shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-shadow hover:shadow-md dark:bg-white/[0.03] dark:ring-white/10 sm:flex-row sm:items-center sm:justify-between">
@@ -36,7 +53,13 @@ export function AutomationCard({ automation }: { automation: Automation }) {
         </div>
 
         <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-          {automation.lastRun ? (
+          {automation.status === "pending_approval" ? (
+            automation.createdBy ? (
+              `Proposed by ${automation.createdBy.name}`
+            ) : (
+              "Waiting for approval"
+            )
+          ) : automation.lastRun ? (
             <>
               Last run {automation.lastRun.at} —{" "}
               <span className={outcomeColor[automation.lastRun.outcome]}>
@@ -50,10 +73,31 @@ export function AutomationCard({ automation }: { automation: Automation }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-4 sm:flex-col sm:items-end sm:gap-3">
-        {automation.status === "active" || automation.status === "paused" ? (
+        {automation.status === "pending_approval" ? (
+          isAdmin ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => rejectAutomation(automation.id)}
+                className="rounded-full bg-black/[.04] px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.07] dark:bg-white/[.06] dark:hover:bg-white/[.1]"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => approveAutomation(automation.id)}
+                className="rounded-full bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
+              >
+                Approve
+              </button>
+            </div>
+          ) : (
+            <span className="text-xs text-zinc-400 dark:text-zinc-500">
+              Needs admin approval
+            </span>
+          )
+        ) : automation.status === "active" || automation.status === "paused" ? (
           <ToggleSwitch
             on={automation.status === "active"}
-            onChange={() => toggleStatus(automation.id)}
+            onChange={handleToggle}
             label={`Toggle ${automation.name}`}
           />
         ) : automation.status === "error" ? (
@@ -72,6 +116,19 @@ export function AutomationCard({ automation }: { automation: Automation }) {
           </Link>
         )}
       </div>
+
+      {confirmOpen && (
+        <ConfirmationModal
+          automationName={automation.name}
+          steps={automation.steps}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={(alwaysAllow) => {
+            setConfirmOpen(false);
+            if (alwaysAllow) setAlwaysAllow(automation.id, true);
+            toggleStatus(automation.id);
+          }}
+        />
+      )}
     </div>
   );
 }

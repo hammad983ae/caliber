@@ -21,6 +21,11 @@ const styles: Record<AutomationStatus, { dot: string; label: string; text: strin
     label: "Draft",
     text: "text-zinc-600 dark:text-zinc-400",
   },
+  pending_approval: {
+    dot: "bg-indigo-500",
+    label: "Pending approval",
+    text: "text-indigo-700 dark:text-indigo-300",
+  },
 };
 
 export function StatusBadge({ status }: { status: AutomationStatus }) {

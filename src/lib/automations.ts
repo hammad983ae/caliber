@@ -1,4 +1,9 @@
-export type AutomationStatus = "active" | "paused" | "error" | "draft";
+export type AutomationStatus =
+  | "active"
+  | "paused"
+  | "error"
+  | "draft"
+  | "pending_approval";
 
 export type FlowStepKind = "trigger" | "condition" | "action";
 
@@ -24,6 +29,12 @@ export interface Automation {
   connectors: string[];
   steps: FlowStep[];
   lastRun: LastRun | null;
+  /** "personal" automations are private to the creator; "team" ones belong to an active organization. */
+  scope: "personal" | "team";
+  orgId?: string;
+  /** Skip the risk-tier confirmation modal for this automation going forward. */
+  alwaysAllow?: boolean;
+  createdBy?: { name: string; imageUrl?: string };
 }
 
 export const SEED_AUTOMATIONS: Automation[] = [
@@ -31,6 +42,7 @@ export const SEED_AUTOMATIONS: Automation[] = [
     id: "focus-mode",
     name: "Focus mode",
     status: "active",
+    scope: "personal",
     connectors: ["calendar", "message"],
     steps: [
       { kind: "trigger", icon: "mic", description: 'You say "start focus mode"' },
@@ -53,6 +65,7 @@ export const SEED_AUTOMATIONS: Automation[] = [
     id: "new-lead-alert",
     name: "New lead alert",
     status: "active",
+    scope: "personal",
     connectors: ["message", "check"],
     steps: [
       {
@@ -74,6 +87,7 @@ export const SEED_AUTOMATIONS: Automation[] = [
     id: "evening-wind-down",
     name: "Evening wind-down",
     status: "paused",
+    scope: "personal",
     connectors: ["bulb", "lock"],
     steps: [
       { kind: "trigger", icon: "calendar", description: "Every day at sunset" },
@@ -96,6 +110,7 @@ export const SEED_AUTOMATIONS: Automation[] = [
     id: "meeting-follow-up",
     name: "Meeting follow-up",
     status: "error",
+    scope: "personal",
     connectors: ["calendar", "mail"],
     steps: [
       {
@@ -120,6 +135,7 @@ export const SEED_AUTOMATIONS: Automation[] = [
     id: "weekly-digest",
     name: "Weekly digest",
     status: "active",
+    scope: "personal",
     connectors: ["mail"],
     steps: [
       { kind: "trigger", icon: "calendar", description: "Every Monday at 8am" },
@@ -142,6 +158,7 @@ export const SEED_AUTOMATIONS: Automation[] = [
     id: "away-mode",
     name: "Away mode",
     status: "draft",
+    scope: "personal",
     connectors: ["bulb", "bell"],
     steps: [
       { kind: "trigger", icon: "hash", description: "You leave the house" },
