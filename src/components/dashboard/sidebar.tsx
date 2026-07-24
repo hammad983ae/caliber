@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 
 const links = [
   { href: "/dashboard", label: "Automations", icon: "grid" },
@@ -30,10 +30,14 @@ function NavIcon({ icon, className }: { icon: string; className?: string }) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-black/5 bg-zinc-50/60 px-4 py-6 dark:border-white/10 dark:bg-white/[0.02]">
-      <Link href="/dashboard" className="px-2 text-lg font-semibold tracking-tight">
+    <aside className="flex h-full w-64 shrink-0 flex-col bg-zinc-100/80 px-4 py-6 ring-1 ring-black/5 dark:bg-white/[0.035] dark:ring-white/[0.06]">
+      <Link href="/dashboard" className="flex items-center gap-2 px-2 text-lg font-semibold tracking-tight">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-semibold text-white">
+          C
+        </span>
         Caliber
       </Link>
 
@@ -55,25 +59,35 @@ export function Sidebar() {
               href={link.href}
               className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-white text-foreground shadow-sm ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10"
-                  : "text-zinc-600 hover:bg-black/[.03] hover:text-foreground dark:text-zinc-400 dark:hover:bg-white/[.05]"
+                  ? "bg-white text-foreground shadow-sm ring-1 ring-black/5 dark:bg-white/[0.08] dark:ring-white/10"
+                  : "text-zinc-600 hover:bg-black/[.04] hover:text-foreground dark:text-zinc-400 dark:hover:bg-white/[.05]"
               }`}
             >
-              <NavIcon icon={link.icon} className="h-4 w-4" />
+              <NavIcon
+                icon={link.icon}
+                className={`h-4 w-4 ${active ? "text-indigo-600 dark:text-indigo-400" : ""}`}
+              />
               {link.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-auto flex items-center gap-3 px-2 pt-6">
-        <UserButton />
-        <Link
-          href="/"
-          className="text-xs text-zinc-500 hover:text-foreground dark:text-zinc-400"
-        >
-          Back to site
-        </Link>
+      <div className="mt-auto flex items-center gap-2.5 rounded-2xl bg-white/70 p-2.5 shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
+        <UserButton
+          appearance={{
+            elements: { avatarBox: "h-8 w-8 rounded-full ring-2 ring-black/5 dark:ring-white/10" },
+          }}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{user?.fullName ?? "Your account"}</p>
+          <Link
+            href="/"
+            className="text-xs text-zinc-500 hover:text-foreground dark:text-zinc-400"
+          >
+            Back to site
+          </Link>
+        </div>
       </div>
     </aside>
   );
