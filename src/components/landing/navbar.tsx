@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 
 export function Navbar() {
   return (
@@ -23,16 +23,18 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           <Show when="signed-out">
-            <SignInButton mode="modal">
-              <button className="text-sm font-medium text-zinc-600 hover:text-foreground dark:text-zinc-400">
-                Sign in
-              </button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <button className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]">
-                Get started
-              </button>
-            </SignUpButton>
+            <Link
+              href="/sign-in"
+              className="text-sm font-medium text-zinc-600 hover:text-foreground dark:text-zinc-400"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/sign-up"
+              className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+            >
+              Get started
+            </Link>
           </Show>
           <Show when="signed-in">
             <UserButton />

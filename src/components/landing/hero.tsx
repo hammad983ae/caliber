@@ -1,4 +1,4 @@
-import { SignUpButton } from "@clerk/nextjs";
+import Link from "next/link";
 
 export function Hero() {
   return (
@@ -18,11 +18,12 @@ export function Hero() {
       </p>
 
       <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-        <SignUpButton mode="modal">
-          <button className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]">
-            Get started free
-          </button>
-        </SignUpButton>
+        <Link
+          href="/sign-up"
+          className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+        >
+          Get started free
+        </Link>
         <a
           href="#how-it-works"
           className="rounded-full border border-black/[.08] px-6 py-3 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"

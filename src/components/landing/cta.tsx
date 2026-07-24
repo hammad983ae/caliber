@@ -1,4 +1,4 @@
-import { SignUpButton } from "@clerk/nextjs";
+import Link from "next/link";
 
 export function Cta() {
   return (
@@ -11,11 +11,12 @@ export function Cta() {
           Free to try. Nothing runs against your accounts until you confirm
           it.
         </p>
-        <SignUpButton mode="modal">
-          <button className="mt-8 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]">
-            Get started free
-          </button>
-        </SignUpButton>
+        <Link
+          href="/sign-up"
+          className="mt-8 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+        >
+          Get started free
+        </Link>
       </div>
     </section>
   );
