@@ -1,19 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignUp } from "@clerk/nextjs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { GoogleButton } from "@/components/auth/google-button";
 import { Divider } from "@/components/auth/divider";
 import { Field } from "@/components/auth/field";
 
+function formatTemplate(slug: string) {
+  return slug
+    .split("-")
+    .map((word) => word[0]?.toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
+  );
+}
+
+function SignUpForm() {
   const { signUp, errors, fetchStatus } = useSignUp();
   const { isSignedIn } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [notice, setNotice] = useState<string | null>(null);
+
+  const intent = searchParams.get("intent");
+  const template = searchParams.get("template");
 
   useEffect(() => {
     if (isSignedIn) router.replace("/");
@@ -145,6 +164,16 @@ export default function SignUpPage() {
       }
     >
       <div className="flex flex-col gap-4">
+        {(intent || template) && (
+          <div className="rounded-xl bg-indigo-500/10 px-4 py-3 text-sm text-indigo-700 dark:bg-indigo-400/10 dark:text-indigo-300">
+            {intent ? (
+              <>Continuing with: &ldquo;{intent}&rdquo;</>
+            ) : (
+              <>Starting from the &ldquo;{formatTemplate(template!)}&rdquo; template.</>
+            )}
+          </div>
+        )}
+
         <GoogleButton onClick={handleGoogle} loading={fetchStatus === "fetching"} />
 
         <Divider label="or continue with email" />

@@ -13,6 +13,9 @@ export function Navbar() {
           <a href="#how-it-works" className="hover:text-foreground">
             How it works
           </a>
+          <a href="#automations" className="hover:text-foreground">
+            Automations
+          </a>
           <a href="#features" className="hover:text-foreground">
             Features
           </a>

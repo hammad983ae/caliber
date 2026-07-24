@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Glow } from "@/components/landing/glow";
+import { HeroInput } from "@/components/landing/hero-input";
 
 export function Hero() {
   return (
@@ -26,40 +27,21 @@ export function Hero() {
           real apps and devices — nothing executes without your say-so.
         </p>
 
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+        <HeroInput />
+
+        <div className="mt-6 flex items-center gap-6 text-sm">
           <Link
             href="/sign-up"
-            className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background shadow-lg shadow-indigo-500/20 transition-transform hover:scale-[1.03] dark:shadow-indigo-500/10"
+            className="font-medium text-foreground underline decoration-black/20 underline-offset-4 hover:decoration-black/40 dark:decoration-white/20 dark:hover:decoration-white/40"
           >
             Get started free
           </Link>
           <a
             href="#how-it-works"
-            className="rounded-full bg-black/[.04] px-6 py-3 text-sm font-medium transition-colors hover:bg-black/[.07] dark:bg-white/[.06] dark:hover:bg-white/[.1]"
+            className="text-zinc-600 hover:text-foreground dark:text-zinc-400"
           >
             See how it works
           </a>
-        </div>
-
-        <div className="relative mt-16 w-full max-w-2xl rotate-[-1deg] rounded-3xl bg-white/70 p-4 text-left shadow-2xl shadow-indigo-950/10 ring-1 ring-black/5 backdrop-blur-xl dark:bg-white/[0.04] dark:shadow-black/40 dark:ring-white/10">
-          <div className="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm dark:bg-white/[0.03]">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 to-orange-400 text-white shadow-sm">
-              <span className="h-2.5 w-2.5 rounded-full bg-white/90" />
-            </span>
-            <p className="text-sm text-zinc-700 dark:text-zinc-300">
-              &ldquo;Every Friday at 5, block my calendar for the next 3 hours
-              and mute Slack.&rdquo;
-            </p>
-          </div>
-          <div className="mt-3 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 px-4 py-3 text-sm shadow-sm dark:from-indigo-500/10 dark:to-violet-500/10">
-            <p className="font-medium">Proposed automation</p>
-            <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-              1. Create &ldquo;Focus time&rdquo; on your calendar, 3 hours,
-              recurring Fridays at 5pm
-              <br />
-              2. Set Slack status to &ldquo;muted&rdquo; for the same window
-            </p>
-          </div>
         </div>
       </div>
     </section>
