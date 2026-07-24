@@ -5,9 +5,9 @@ import { AutomationsProvider } from "@/components/dashboard/automations-context"
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <AutomationsProvider>
-      <div className="flex flex-1">
+      <div className="flex h-screen min-h-0 overflow-hidden">
         <Sidebar />
-        <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
       </div>
     </AutomationsProvider>
   );
