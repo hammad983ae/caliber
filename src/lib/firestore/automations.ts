@@ -5,12 +5,14 @@ import type { Automation, AutomationStatus, FlowStep, LastRun } from "@/lib/auto
 
 const COLLECTION = "automations";
 
-interface AutomationDoc {
+export interface AutomationDoc {
   name: string;
   status: AutomationStatus;
   connectors: string[];
   steps: FlowStep[];
   lastRun: LastRun | null;
+  /** Machine-readable timestamp of the last run (manual or automatic), used to avoid double-firing the same day. */
+  lastRunAtISO: string | null;
   scope: "personal" | "team";
   orgId: string | null;
   alwaysAllow: boolean;
@@ -74,6 +76,7 @@ export async function createAutomation(
     connectors: input.connectors,
     steps: input.steps,
     lastRun: null,
+    lastRunAtISO: null,
     scope: owner.orgId ? "team" : "personal",
     orgId: owner.orgId,
     alwaysAllow: input.alwaysAllow ?? false,
@@ -105,7 +108,7 @@ export async function getOwnedAutomation(id: string, owner: Owner) {
 export async function updateAutomation(
   id: string,
   owner: Owner,
-  patch: Partial<Pick<AutomationDoc, "status" | "alwaysAllow" | "lastRun">>,
+  patch: Partial<Pick<AutomationDoc, "status" | "alwaysAllow" | "lastRun" | "lastRunAtISO">>,
 ): Promise<Automation | null> {
   const found = await findOwned(id, owner);
   if (!found) return null;
@@ -121,4 +124,19 @@ export async function deleteAutomation(id: string, owner: Owner): Promise<boolea
 
   await found.ref.delete();
   return true;
+}
+
+/** System-level read used by the scheduled runner — spans every owner, not just one. */
+export async function listActiveAutomations(): Promise<{ id: string; data: AutomationDoc }[]> {
+  const db = getAdminDb();
+  const snap = await db.collection(COLLECTION).where("status", "==", "active").get();
+  return snap.docs.map((d) => ({ id: d.id, data: d.data() as AutomationDoc }));
+}
+
+/** System-level write used by the scheduled runner, which has no single owner making the request. */
+export async function recordAutomationRun(
+  id: string,
+  patch: { lastRun: LastRun; lastRunAtISO: string },
+): Promise<void> {
+  await getAdminDb().collection(COLLECTION).doc(id).update(patch);
 }

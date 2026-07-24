@@ -12,7 +12,8 @@ export async function runCalendarAutomation(automationId: string, automationName
   }
 
   const owner = { userId, orgId: orgId ?? null };
-  const start = new Date(Date.now() + 5 * 60 * 1000);
+  const now = new Date();
+  const start = new Date(now.getTime() + 5 * 60 * 1000);
   const end = new Date(start.getTime() + 30 * 60 * 1000);
 
   try {
@@ -25,6 +26,7 @@ export async function runCalendarAutomation(automationId: string, automationName
     await Promise.all([
       updateAutomation(automationId, owner, {
         lastRun: { at: "Just now", outcome: "success", detail: "Created a real calendar event" },
+        lastRunAtISO: now.toISOString(),
       }),
       createActivityEntry(owner, {
         automationId,
@@ -44,6 +46,7 @@ export async function runCalendarAutomation(automationId: string, automationName
     await Promise.all([
       updateAutomation(automationId, owner, {
         lastRun: { at: "Just now", outcome: "failed", detail: message },
+        lastRunAtISO: now.toISOString(),
       }).catch(() => {}),
       createActivityEntry(owner, {
         automationId,
