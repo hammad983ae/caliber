@@ -60,17 +60,32 @@ export async function GET(req: Request) {
   }
 
   const tokens = (await tokenRes.json()) as {
-    access_token: string;
+    access_token?: string;
     refresh_token?: string;
-    expires_in: number;
-    scope: string;
+    expires_in?: number;
+    scope?: string;
+    error?: string;
+    error_description?: string;
   };
 
   try {
-    await saveTokens(userId, tokens);
+    if (tokens.error) {
+      throw new Error(`${tokens.error}: ${tokens.error_description ?? "no description"}`);
+    }
+    await saveTokens(userId, {
+      access_token: tokens.access_token!,
+      refresh_token: tokens.refresh_token,
+      expires_in: tokens.expires_in!,
+      scope: tokens.scope!,
+    });
     settingsUrl.searchParams.set("connected", "google_calendar");
-  } catch {
+  } catch (err) {
+    const fields = Object.keys(tokens).join(",");
+    console.error(
+      `[google-calendar] token exchange did not yield a usable grant. Fields present: ${fields}. Scope: ${tokens.scope}. Error: ${err instanceof Error ? err.message : err}`,
+    );
     settingsUrl.searchParams.set("connector_error", "no_refresh_token");
+    settingsUrl.searchParams.set("connector_debug", fields || "empty");
   }
 
   const response = NextResponse.redirect(settingsUrl);
