@@ -1,4 +1,4 @@
-import { ConnectorIcon } from "@/components/landing/connector-icon";
+import { ConnectorIcon } from "@/components/icons/connector-icon";
 
 const apps = [
   { name: "Gmail", icon: "mail" },

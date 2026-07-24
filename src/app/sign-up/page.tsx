@@ -35,14 +35,14 @@ function SignUpForm() {
   const template = searchParams.get("template");
 
   useEffect(() => {
-    if (isSignedIn) router.replace("/");
+    if (isSignedIn) router.replace("/dashboard");
   }, [isSignedIn, router]);
 
   const finalize = async () => {
     await signUp.finalize({
       navigate: ({ session, decorateUrl }) => {
         if (session?.currentTask) return;
-        const url = decorateUrl("/");
+        const url = decorateUrl("/dashboard");
         if (url.startsWith("http")) {
           window.location.href = url;
         } else {
@@ -84,7 +84,7 @@ function SignUpForm() {
     await signUp.sso({
       strategy: "oauth_google",
       redirectCallbackUrl: "/sso-callback",
-      redirectUrl: "/",
+      redirectUrl: "/dashboard",
     });
   };
 

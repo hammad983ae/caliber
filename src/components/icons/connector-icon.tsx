@@ -69,6 +69,14 @@ const paths: Record<string, ReactNode> = {
       <path d="M10 19a2 2 0 0 0 4 0" />
     </>
   ),
+  mic: (
+    <>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+      <line x1="12" y1="18" x2="12" y2="22" />
+      <line x1="9" y1="22" x2="15" y2="22" />
+    </>
+  ),
 };
 
 export function ConnectorIcon({

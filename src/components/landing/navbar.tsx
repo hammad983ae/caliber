@@ -40,6 +40,12 @@ export function Navbar() {
             </Link>
           </Show>
           <Show when="signed-in">
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium text-zinc-600 hover:text-foreground dark:text-zinc-400"
+            >
+              Dashboard
+            </Link>
             <UserButton />
           </Show>
         </div>

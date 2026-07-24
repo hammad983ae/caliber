@@ -13,7 +13,7 @@ export default function SignUpContinuePage() {
     await signUp.finalize({
       navigate: ({ session, decorateUrl }) => {
         if (session?.currentTask) return;
-        const url = decorateUrl("/");
+        const url = decorateUrl("/dashboard");
         if (url.startsWith("http")) {
           window.location.href = url;
         } else {

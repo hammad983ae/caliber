@@ -24,7 +24,7 @@ export default function SsoCallbackPage() {
       decorateUrl: (url: string) => string;
     }) => {
       if (session?.currentTask) return;
-      const url = decorateUrl("/");
+      const url = decorateUrl("/dashboard");
       if (url.startsWith("http")) {
         window.location.href = url;
       } else {
