@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { GoogleButton } from "@/components/auth/google-button";
 import { Divider } from "@/components/auth/divider";
 import { Field } from "@/components/auth/field";
+import { Redirecting } from "@/components/auth/redirecting";
 import { sessionTaskMessage } from "@/lib/session-task-message";
 
 function formatTemplate(slug: string) {
@@ -92,7 +93,7 @@ function SignUpForm() {
     });
   };
 
-  if (signUp.status === "complete" || isSignedIn) return null;
+  if (signUp.status === "complete" || isSignedIn) return <Redirecting notice={notice} />;
 
   const awaitingVerification =
     signUp.status === "missing_requirements" &&

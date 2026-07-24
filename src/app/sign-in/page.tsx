@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { GoogleButton } from "@/components/auth/google-button";
 import { Divider } from "@/components/auth/divider";
 import { Field } from "@/components/auth/field";
+import { Redirecting } from "@/components/auth/redirecting";
 import { sessionTaskMessage } from "@/lib/session-task-message";
 
 export default function SignInPage() {
@@ -74,7 +75,7 @@ function SignInForm() {
     });
   };
 
-  if (signIn.status === "complete" || isSignedIn) return null;
+  if (signIn.status === "complete" || isSignedIn) return <Redirecting notice={notice} />;
 
   return (
     <AuthShell

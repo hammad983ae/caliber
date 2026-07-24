@@ -100,7 +100,9 @@ export default function SsoCallbackPage() {
   }, [clerk, signIn, signUp, router]);
 
   return (
-    <div className="flex flex-1 items-center justify-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      <span className="h-6 w-6 animate-spin rounded-full border-2 border-black/10 border-t-foreground dark:border-white/10" />
+      <p className="text-sm text-zinc-500 dark:text-zinc-400">Finishing sign-in…</p>
       {/* Required in case a sign-in transfers to a sign-up needing captcha verification */}
       <div id="clerk-captcha" />
     </div>
