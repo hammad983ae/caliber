@@ -9,7 +9,7 @@ import { RunStatusBadge } from "@/components/dashboard/run-status-badge";
 const STATUS_FILTERS = ["all", "success", "partial", "failed"] as const;
 
 export default function ActivityPage() {
-  const { entries, undoEntry } = useActivity();
+  const { entries, loading, undoEntry } = useActivity();
   const { organization } = useOrganization();
   const [status, setStatus] = useState<(typeof STATUS_FILTERS)[number]>("all");
   const [connector, setConnector] = useState<string>("all");
@@ -68,7 +68,7 @@ export default function ActivityPage() {
       </div>
 
       <div className="mt-6 flex flex-col gap-3">
-        {filtered.length === 0 ? (
+        {loading ? null : filtered.length === 0 ? (
           <div className="rounded-3xl bg-white/70 px-6 py-16 text-center shadow-sm ring-1 ring-black/5 backdrop-blur-sm dark:bg-white/[0.03] dark:ring-white/10">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               {entries.length === 0
@@ -108,7 +108,7 @@ export default function ActivityPage() {
 
               {entry.undoable && (
                 <button
-                  onClick={() => undoEntry(entry.id)}
+                  onClick={() => undoEntry(entry.id).catch(() => {})}
                   className="shrink-0 self-start rounded-full bg-black/[.04] px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.07] dark:bg-white/[.06] dark:hover:bg-white/[.1] sm:self-center"
                 >
                   Undo

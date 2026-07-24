@@ -1,33 +1,54 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useOrganization } from "@clerk/nextjs";
-import { SEED_ACTIVITY, type ActivityEntry } from "@/lib/activity";
+import type { ActivityEntry } from "@/lib/activity";
 
 interface ActivityContextValue {
   entries: ActivityEntry[];
-  undoEntry: (id: string) => void;
+  loading: boolean;
+  undoEntry: (id: string) => Promise<void>;
 }
 
 const ActivityContext = createContext<ActivityContextValue | null>(null);
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
-  const [all, setAll] = useState<ActivityEntry[]>(SEED_ACTIVITY);
-  const { organization } = useOrganization();
+  const { organization, isLoaded } = useOrganization();
+  const [entries, setEntries] = useState<ActivityEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const entries = useMemo(
-    () => all.filter((e) => (organization ? e.scope === "team" : e.scope === "personal")),
-    [all, organization],
-  );
+  useEffect(() => {
+    if (!isLoaded) return;
+    let cancelled = false;
 
-  const undoEntry = (id: string) => {
-    setAll((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, undoable: false, summary: `${e.summary} (undone)` } : e)),
-    );
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/activity");
+        const data = await res.json();
+        if (!cancelled) setEntries(data.entries ?? []);
+      } catch {
+        if (!cancelled) setEntries([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, organization?.id]);
+
+  const undoEntry = async (id: string) => {
+    const res = await fetch(`/api/activity/${id}`, { method: "PATCH" });
+    if (!res.ok) return;
+    const data = await res.json();
+    setEntries((prev) => prev.map((e) => (e.id === id ? data.entry : e)));
   };
 
   return (
-    <ActivityContext.Provider value={{ entries, undoEntry }}>
+    <ActivityContext.Provider value={{ entries, loading, undoEntry }}>
       {children}
     </ActivityContext.Provider>
   );

@@ -24,7 +24,8 @@ export function AutomationCard({
   automation: Automation;
   googleCalendarConnected?: boolean;
 }) {
-  const { toggleStatus, approveAutomation, rejectAutomation, setAlwaysAllow } = useAutomations();
+  const { toggleStatus, approveAutomation, rejectAutomation, setAlwaysAllow, refresh } =
+    useAutomations();
   const { membership } = useOrganization();
   const isAdmin = membership?.role === "org:admin";
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -45,19 +46,20 @@ export function AutomationCard({
       setConfirmOpen(true);
       return;
     }
-    toggleStatus(automation.id);
+    toggleStatus(automation.id).catch(() => {});
   };
 
   const handleRunNow = async () => {
     setRunning(true);
     setRunResult(null);
-    const result = await runCalendarAutomation(automation.name);
+    const result = await runCalendarAutomation(automation.id, automation.name);
     setRunning(false);
     setRunResult(
       result.ok
         ? { ok: true, message: "Created a real event on your calendar.", link: result.link }
         : { ok: false, message: result.error },
     );
+    refresh().catch(() => {});
   };
 
   return (
@@ -105,13 +107,13 @@ export function AutomationCard({
             isAdmin ? (
               <div className="flex gap-2">
                 <button
-                  onClick={() => rejectAutomation(automation.id)}
+                  onClick={() => rejectAutomation(automation.id).catch(() => {})}
                   className="rounded-full bg-black/[.04] px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.07] dark:bg-white/[.06] dark:hover:bg-white/[.1]"
                 >
                   Reject
                 </button>
                 <button
-                  onClick={() => approveAutomation(automation.id)}
+                  onClick={() => approveAutomation(automation.id).catch(() => {})}
                   className="rounded-full bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
                 >
                   Approve
@@ -182,8 +184,8 @@ export function AutomationCard({
           onCancel={() => setConfirmOpen(false)}
           onConfirm={(alwaysAllow) => {
             setConfirmOpen(false);
-            if (alwaysAllow) setAlwaysAllow(automation.id, true);
-            toggleStatus(automation.id);
+            if (alwaysAllow) setAlwaysAllow(automation.id, true).catch(() => {});
+            toggleStatus(automation.id).catch(() => {});
           }}
         />
       )}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useOrganization } from "@clerk/nextjs";
+import { useOrganization, useUser } from "@clerk/nextjs";
 import { ChatPanel, type ChatMessage } from "@/components/dashboard/chat-panel";
 import { FlowPanel } from "@/components/dashboard/flow-panel";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
@@ -24,6 +24,7 @@ function guessName(steps: FlowStep[]) {
 export default function NewAutomationPage() {
   const router = useRouter();
   const { organization } = useOrganization();
+  const { user } = useUser();
   const { addAutomation } = useAutomations();
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [steps, setSteps] = useState<FlowStep[]>([]);
@@ -32,6 +33,7 @@ export default function NewAutomationPage() {
   const [shareWithTeam, setShareWithTeam] = useState(false);
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const handleSend = (text: string) => {
     setMessages((prev) => [...prev, { role: "user", text }]);
@@ -54,19 +56,27 @@ export default function NewAutomationPage() {
     setRequiresApproval(false);
   };
 
-  const commitSave = (alwaysAllow: boolean) => {
+  const commitSave = async (alwaysAllow: boolean) => {
     const connectors = Array.from(new Set(steps.map((s) => s.icon)));
     const status: AutomationStatus =
       shareWithTeam && requiresApproval ? "pending_approval" : "active";
 
-    const automation = addAutomation({
-      name: guessName(steps),
-      status,
-      connectors,
-      steps,
-      alwaysAllow,
-    });
-    router.push(`/dashboard?created=${automation.id}`);
+    setSaving(true);
+    try {
+      const automation = await addAutomation({
+        name: guessName(steps),
+        status,
+        connectors,
+        steps,
+        alwaysAllow,
+        createdBy: user
+          ? { name: user.fullName ?? "You", imageUrl: user.imageUrl }
+          : undefined,
+      });
+      router.push(`/dashboard?created=${automation.id}`);
+    } catch {
+      setSaving(false);
+    }
   };
 
   const handleSaveClick = () => {
@@ -96,10 +106,10 @@ export default function NewAutomationPage() {
           </button>
           <button
             onClick={handleSaveClick}
-            disabled={steps.length === 0}
+            disabled={steps.length === 0 || saving}
             className="rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-500/30 transition-transform disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none enabled:hover:scale-[1.03]"
           >
-            Save automation
+            {saving ? "Saving…" : "Save automation"}
           </button>
         </div>
       </div>

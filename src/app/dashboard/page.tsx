@@ -8,7 +8,7 @@ import { AutomationCard } from "@/components/dashboard/automation-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
 
 export default function DashboardPage() {
-  const { automations } = useAutomations();
+  const { automations, loading } = useAutomations();
   const { organization } = useOrganization();
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
 
@@ -65,7 +65,7 @@ export default function DashboardPage() {
       )}
 
       <div className="mt-8 flex flex-col gap-4">
-        {automations.length === 0 ? (
+        {loading ? null : automations.length === 0 ? (
           <EmptyState />
         ) : (
           automations.map((automation) => (

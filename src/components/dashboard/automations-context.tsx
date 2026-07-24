@@ -1,88 +1,128 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { useOrganization, useUser } from "@clerk/nextjs";
-import { SEED_AUTOMATIONS, type Automation } from "@/lib/automations";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useOrganization } from "@clerk/nextjs";
+import type { Automation, AutomationStatus, FlowStep } from "@/lib/automations";
 
-type NewAutomationInput = Omit<
-  Automation,
-  "id" | "lastRun" | "scope" | "orgId" | "createdBy"
->;
+type NewAutomationInput = {
+  name: string;
+  status: AutomationStatus;
+  connectors: string[];
+  steps: FlowStep[];
+  alwaysAllow?: boolean;
+  createdBy?: { name: string; imageUrl?: string };
+};
 
 interface AutomationsContextValue {
   automations: Automation[];
+  loading: boolean;
   workspace: "personal" | "team";
-  addAutomation: (input: NewAutomationInput) => Automation;
-  toggleStatus: (id: string) => void;
-  setAlwaysAllow: (id: string, value: boolean) => void;
-  approveAutomation: (id: string) => void;
-  rejectAutomation: (id: string) => void;
+  addAutomation: (input: NewAutomationInput) => Promise<Automation>;
+  toggleStatus: (id: string) => Promise<void>;
+  setAlwaysAllow: (id: string, value: boolean) => Promise<void>;
+  approveAutomation: (id: string) => Promise<void>;
+  rejectAutomation: (id: string) => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const AutomationsContext = createContext<AutomationsContextValue | null>(null);
 
+async function parseJson(res: Response) {
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error ?? `Request failed with ${res.status}`);
+  }
+  return data;
+}
+
 export function AutomationsProvider({ children }: { children: ReactNode }) {
-  const [all, setAll] = useState<Automation[]>(SEED_AUTOMATIONS);
-  const { organization } = useOrganization();
-  const { user } = useUser();
+  const { organization, isLoaded } = useOrganization();
+  const [all, setAll] = useState<Automation[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const automations = useMemo(
-    () =>
-      all.filter((a) =>
-        organization ? a.scope === "team" && a.orgId === organization.id : a.scope === "personal",
-      ),
-    [all, organization],
-  );
+  const refresh = async () => {
+    const data = await parseJson(await fetch("/api/automations"));
+    setAll(data.automations ?? []);
+  };
 
-  const addAutomation: AutomationsContextValue["addAutomation"] = (input) => {
-    const automation: Automation = {
-      ...input,
-      id: `${input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
-      lastRun: null,
-      scope: organization ? "team" : "personal",
-      orgId: organization?.id,
-      createdBy: user
-        ? { name: user.fullName ?? "You", imageUrl: user.imageUrl }
-        : undefined,
+  useEffect(() => {
+    if (!isLoaded) return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const data = await parseJson(await fetch("/api/automations"));
+        if (!cancelled) setAll(data.automations ?? []);
+      } catch {
+        if (!cancelled) setAll([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
     };
+  }, [isLoaded, organization?.id]);
+
+  const addAutomation: AutomationsContextValue["addAutomation"] = async (input) => {
+    const data = await parseJson(
+      await fetch("/api/automations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      }),
+    );
+    const automation = data.automation as Automation;
     setAll((prev) => [automation, ...prev]);
     return automation;
   };
 
-  const toggleStatus = (id: string) => {
-    setAll((prev) =>
-      prev.map((a) =>
-        a.id === id
-          ? { ...a, status: a.status === "active" ? "paused" : "active" }
-          : a,
-      ),
+  const patchAutomation = async (id: string, patch: { status?: AutomationStatus; alwaysAllow?: boolean }) => {
+    const data = await parseJson(
+      await fetch(`/api/automations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      }),
     );
+    const automation = data.automation as Automation;
+    setAll((prev) => prev.map((a) => (a.id === id ? automation : a)));
   };
 
-  const setAlwaysAllow = (id: string, value: boolean) => {
-    setAll((prev) => prev.map((a) => (a.id === id ? { ...a, alwaysAllow: value } : a)));
+  const toggleStatus = async (id: string) => {
+    const current = all.find((a) => a.id === id);
+    if (!current) return;
+    await patchAutomation(id, { status: current.status === "active" ? "paused" : "active" });
   };
 
-  const approveAutomation = (id: string) => {
-    setAll((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "active" } : a)),
-    );
+  const setAlwaysAllow = async (id: string, value: boolean) => {
+    await patchAutomation(id, { alwaysAllow: value });
   };
 
-  const rejectAutomation = (id: string) => {
+  const approveAutomation = async (id: string) => {
+    await patchAutomation(id, { status: "active" });
+  };
+
+  const rejectAutomation = async (id: string) => {
+    await parseJson(await fetch(`/api/automations/${id}`, { method: "DELETE" }));
     setAll((prev) => prev.filter((a) => a.id !== id));
   };
 
   return (
     <AutomationsContext.Provider
       value={{
-        automations,
+        automations: all,
+        loading,
         workspace: organization ? "team" : "personal",
         addAutomation,
         toggleStatus,
         setAlwaysAllow,
         approveAutomation,
         rejectAutomation,
+        refresh,
       }}
     >
       {children}
