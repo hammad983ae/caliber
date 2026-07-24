@@ -1,0 +1,44 @@
+import Link from "next/link";
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+
+export function Navbar() {
+  return (
+    <header className="sticky top-0 z-50 border-b border-black/[.06] bg-white/80 backdrop-blur-sm dark:border-white/[.08] dark:bg-black/80">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <Link href="/" className="text-lg font-semibold tracking-tight">
+          Caliber
+        </Link>
+
+        <nav className="hidden items-center gap-8 text-sm text-zinc-600 dark:text-zinc-400 sm:flex">
+          <a href="#how-it-works" className="hover:text-foreground">
+            How it works
+          </a>
+          <a href="#features" className="hover:text-foreground">
+            Features
+          </a>
+          <a href="#teams" className="hover:text-foreground">
+            For teams
+          </a>
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button className="text-sm font-medium text-zinc-600 hover:text-foreground dark:text-zinc-400">
+                Sign in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]">
+                Get started
+              </button>
+            </SignUpButton>
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
+        </div>
+      </div>
+    </header>
+  );
+}
