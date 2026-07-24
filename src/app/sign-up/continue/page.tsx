@@ -1,18 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSignUp } from "@clerk/nextjs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Field } from "@/components/auth/field";
+import { sessionTaskMessage } from "@/lib/session-task-message";
 
 export default function SignUpContinuePage() {
   const { signUp, errors, fetchStatus } = useSignUp();
   const router = useRouter();
+  const [notice, setNotice] = useState<string | null>(null);
 
   const finalize = async () => {
     await signUp.finalize({
       navigate: ({ session, decorateUrl }) => {
-        if (session?.currentTask) return;
+        if (session?.currentTask) {
+          setNotice(sessionTaskMessage(session.currentTask.key));
+          return;
+        }
         const url = decorateUrl("/dashboard");
         if (url.startsWith("http")) {
           window.location.href = url;
@@ -80,6 +86,12 @@ export default function SignUpContinuePage() {
           required
           error={errors.fields.lastName?.message}
         />
+        {(notice || errors.global?.[0]) && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {notice ?? errors.global?.[0]?.longMessage ?? errors.global?.[0]?.message}
+          </p>
+        )}
+
         <button
           type="submit"
           disabled={fetchStatus === "fetching"}

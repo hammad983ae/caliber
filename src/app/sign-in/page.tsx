@@ -1,19 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignIn } from "@clerk/nextjs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { GoogleButton } from "@/components/auth/google-button";
 import { Divider } from "@/components/auth/divider";
 import { Field } from "@/components/auth/field";
+import { sessionTaskMessage } from "@/lib/session-task-message";
 
 export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const { signIn, errors, fetchStatus } = useSignIn();
   const { isSignedIn } = useAuth();
   const router = useRouter();
-  const [notice, setNotice] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [notice, setNotice] = useState<string | null>(
+    searchParams.get("task") ? sessionTaskMessage(searchParams.get("task") ?? undefined) : null,
+  );
 
   useEffect(() => {
     if (isSignedIn) router.replace("/dashboard");
@@ -22,7 +34,10 @@ export default function SignInPage() {
   const finalize = async () => {
     await signIn.finalize({
       navigate: ({ session, decorateUrl }) => {
-        if (session?.currentTask) return;
+        if (session?.currentTask) {
+          setNotice(sessionTaskMessage(session.currentTask.key));
+          return;
+        }
         const url = decorateUrl("/dashboard");
         if (url.startsWith("http")) {
           window.location.href = url;

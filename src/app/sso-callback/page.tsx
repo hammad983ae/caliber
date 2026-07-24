@@ -20,10 +20,13 @@ export default function SsoCallbackPage() {
       session,
       decorateUrl,
     }: {
-      session?: { currentTask?: unknown };
+      session?: { currentTask?: { key?: string } };
       decorateUrl: (url: string) => string;
     }) => {
-      if (session?.currentTask) return;
+      if (session?.currentTask) {
+        router.push(`/sign-in?task=${encodeURIComponent(session.currentTask.key ?? "")}`);
+        return;
+      }
       const url = decorateUrl("/dashboard");
       if (url.startsWith("http")) {
         window.location.href = url;

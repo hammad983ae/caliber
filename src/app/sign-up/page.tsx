@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { GoogleButton } from "@/components/auth/google-button";
 import { Divider } from "@/components/auth/divider";
 import { Field } from "@/components/auth/field";
+import { sessionTaskMessage } from "@/lib/session-task-message";
 
 function formatTemplate(slug: string) {
   return slug
@@ -41,7 +42,10 @@ function SignUpForm() {
   const finalize = async () => {
     await signUp.finalize({
       navigate: ({ session, decorateUrl }) => {
-        if (session?.currentTask) return;
+        if (session?.currentTask) {
+          setNotice(sessionTaskMessage(session.currentTask.key));
+          return;
+        }
         const url = decorateUrl("/dashboard");
         if (url.startsWith("http")) {
           window.location.href = url;
