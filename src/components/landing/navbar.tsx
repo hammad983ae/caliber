@@ -3,7 +3,7 @@ import { Show, UserButton } from "@clerk/nextjs";
 
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 border-b border-black/[.06] bg-white/80 backdrop-blur-sm dark:border-white/[.08] dark:bg-black/80">
+    <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-md dark:bg-black/60">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="text-lg font-semibold tracking-tight">
           Caliber
