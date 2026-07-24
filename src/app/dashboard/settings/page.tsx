@@ -19,7 +19,7 @@ const CONNECTOR_ERROR_MESSAGES: Record<string, string> = {
   not_configured: "Google Calendar isn't configured on this deployment yet.",
   invalid_state: "That connection attempt looked suspicious, so we stopped it. Try again.",
   token_exchange_failed: "Google didn't accept that connection. Try again.",
-  no_refresh_token: "Google's response didn't include a lasting access grant.",
+  save_failed: "Google approved the connection, but saving it failed.",
   access_denied: "You cancelled the Google Calendar connection.",
 };
 
@@ -56,7 +56,7 @@ function SettingsContent() {
     if (redirectConnected) return "Google Calendar connected.";
     if (redirectError) {
       const base = CONNECTOR_ERROR_MESSAGES[redirectError] ?? "Couldn't connect Google Calendar.";
-      return redirectDebug ? `${base} (Google returned: ${redirectDebug})` : base;
+      return redirectDebug ? `${base} Details: ${redirectDebug}` : base;
     }
     return null;
   });

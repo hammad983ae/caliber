@@ -80,12 +80,10 @@ export async function GET(req: Request) {
     });
     settingsUrl.searchParams.set("connected", "google_calendar");
   } catch (err) {
-    const fields = Object.keys(tokens).join(",");
-    console.error(
-      `[google-calendar] token exchange did not yield a usable grant. Fields present: ${fields}. Scope: ${tokens.scope}. Error: ${err instanceof Error ? err.message : err}`,
-    );
-    settingsUrl.searchParams.set("connector_error", "no_refresh_token");
-    settingsUrl.searchParams.set("connector_debug", fields || "empty");
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[google-calendar] failed to save the connection: ${message}`);
+    settingsUrl.searchParams.set("connector_error", "save_failed");
+    settingsUrl.searchParams.set("connector_debug", message.slice(0, 300));
   }
 
   const response = NextResponse.redirect(settingsUrl);
