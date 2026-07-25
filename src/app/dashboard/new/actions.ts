@@ -17,10 +17,11 @@ export async function generateAutomationTurn(
     const turn = await callGemini(history, existingSteps);
     return { ok: true as const, turn };
   } catch (err) {
-    console.error("[automation-builder] Gemini call failed:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[automation-builder] Gemini call failed:", message);
     return {
       ok: false as const,
-      error: "Sorry, I couldn't process that just now — try again in a moment.",
+      error: `Sorry, I couldn't process that just now. Details: ${message.slice(0, 300)}`,
     };
   }
 }
