@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { AppLogo } from "@/components/icons/app-logo";
@@ -15,6 +15,14 @@ const CONNECTOR_ERROR_MESSAGES: Record<string, string> = {
   token_exchange_failed: "Google didn't accept that connection. Try again.",
   save_failed: "Google approved the connection, but saving it failed.",
   access_denied: "You cancelled the Google Calendar connection.",
+};
+
+const SHEETS_ERROR_MESSAGES: Record<string, string> = {
+  not_configured: "Google Sheets isn't configured on this deployment yet.",
+  invalid_state: "That connection attempt looked suspicious, so we stopped it. Try again.",
+  token_exchange_failed: "Google didn't accept that connection. Try again.",
+  save_failed: "Google approved the connection, but saving it failed.",
+  access_denied: "You cancelled the Google Sheets connection.",
 };
 
 export default function SettingsPage() {
@@ -50,12 +58,36 @@ function SettingsContent() {
     return null;
   });
 
+  const sheetsRedirectConnected = searchParams.get("sheets_connected") === "1";
+  const sheetsRedirectError = searchParams.get("sheets_error");
+  const sheetsRedirectDebug = searchParams.get("sheets_debug");
+
+  const [sheetsNotice, setSheetsNotice] = useState<string | null>(() => {
+    if (sheetsRedirectConnected) return "Google Sheets connected.";
+    if (sheetsRedirectError) {
+      const base = SHEETS_ERROR_MESSAGES[sheetsRedirectError] ?? "Couldn't connect Google Sheets.";
+      return sheetsRedirectDebug ? `${base} Details: ${sheetsRedirectDebug}` : base;
+    }
+    return null;
+  });
+
   const handleDisconnectGoogleCalendar = async () => {
     setBusyConnector("google_calendar");
     try {
       await fetch("/api/connectors/google-calendar/disconnect", { method: "POST" });
       await refresh();
       setGcalNotice("Google Calendar disconnected.");
+    } finally {
+      setBusyConnector(null);
+    }
+  };
+
+  const handleDisconnectGoogleSheets = async () => {
+    setBusyConnector("google_sheets");
+    try {
+      await fetch("/api/connectors/google-sheets/disconnect", { method: "POST" });
+      await refresh();
+      setSheetsNotice("Google Sheets disconnected.");
     } finally {
       setBusyConnector(null);
     }
@@ -121,6 +153,11 @@ function SettingsContent() {
             {gcalNotice}
           </p>
         )}
+        {sheetsNotice && (
+          <p className="mt-3 rounded-xl bg-indigo-500/10 px-4 py-2.5 text-sm text-indigo-700 dark:text-indigo-300">
+            {sheetsNotice}
+          </p>
+        )}
 
         <ul className="mt-4 flex flex-col divide-y divide-black/5 dark:divide-white/10">
           <li className="flex items-center justify-between py-3">
@@ -146,6 +183,34 @@ function SettingsContent() {
                 Connect
               </a>
             )}
+          </li>
+
+          <li className="flex flex-col gap-3 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AppLogo app="google_sheets" className="h-8 w-8 rounded-lg shadow-sm" />
+                <span className="text-sm font-medium">Google Sheets</span>
+              </div>
+              {statusLoading ? (
+                <span className="text-xs text-zinc-400">Checking…</span>
+              ) : status.google_sheets ? (
+                <button
+                  onClick={handleDisconnectGoogleSheets}
+                  disabled={busyConnector === "google_sheets"}
+                  className="rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-rose-500/10 hover:text-rose-700 disabled:opacity-50 dark:text-emerald-300 dark:hover:text-rose-300"
+                >
+                  {busyConnector === "google_sheets" ? "Disconnecting…" : "Connected"}
+                </button>
+              ) : (
+                <a
+                  href="/api/connectors/google-sheets/connect"
+                  className="rounded-full bg-black/[.04] px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.07] dark:bg-white/[.06] dark:text-zinc-300 dark:hover:bg-white/[.1]"
+                >
+                  Connect
+                </a>
+              )}
+            </div>
+            {status.google_sheets && <SheetsConfigForm />}
           </li>
 
           {MOCK_CONNECTOR_IDS.map((id) => {
@@ -215,6 +280,82 @@ function SettingsContent() {
         </button>
       </section>
     </div>
+  );
+}
+
+function SheetsConfigForm() {
+  const [spreadsheet, setSpreadsheet] = useState("");
+  const [sheetName, setSheetName] = useState("Sheet1");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await fetch("/api/connectors/google-sheets/config");
+        const data = await res.json();
+        if (!cancelled) {
+          if (data.spreadsheetId) setSpreadsheet(data.spreadsheetId);
+          if (data.sheetName) setSheetName(data.sheetName);
+        }
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/connectors/google-sheets/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spreadsheet, sheetName }),
+      });
+      setNotice(res.ok ? "Saved." : "That doesn't look like a valid spreadsheet link or ID.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <form
+      onSubmit={handleSave}
+      className="flex flex-col gap-2 rounded-2xl bg-black/[.02] p-3 dark:bg-white/[0.04] sm:flex-row sm:items-center"
+    >
+      <input
+        value={spreadsheet}
+        onChange={(e) => setSpreadsheet(e.target.value)}
+        placeholder="Paste a Google Sheets link or ID"
+        className="min-w-0 flex-1 rounded-full bg-white px-3.5 py-1.5 text-xs outline-none ring-1 ring-black/10 placeholder:text-zinc-400 dark:bg-black/20 dark:ring-white/10"
+      />
+      <input
+        value={sheetName}
+        onChange={(e) => setSheetName(e.target.value)}
+        placeholder="Sheet1"
+        className="w-full rounded-full bg-white px-3.5 py-1.5 text-xs outline-none ring-1 ring-black/10 placeholder:text-zinc-400 sm:w-24 dark:bg-black/20 dark:ring-white/10"
+      />
+      <button
+        type="submit"
+        disabled={saving || !spreadsheet.trim()}
+        className="shrink-0 rounded-full bg-black/[.06] px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.1] disabled:opacity-50 dark:bg-white/[.08] dark:hover:bg-white/[.14]"
+      >
+        {saving ? "Saving…" : "Save"}
+      </button>
+      {notice && <span className="text-xs text-zinc-500 dark:text-zinc-400">{notice}</span>}
+    </form>
   );
 }
 

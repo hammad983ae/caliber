@@ -17,6 +17,7 @@ const ICONS = [
   "music",
   "doc",
   "hash",
+  "grid",
 ] as const;
 
 const KINDS: FlowStepKind[] = ["trigger", "condition", "action"];
@@ -32,7 +33,7 @@ You are Caliber's automation-builder assistant. Users describe, in their own wor
 
 Rules:
 - Every automation needs exactly one "trigger" step (what starts it) and one or more "action" steps (what it does). Add a "condition" step between them only if the user described one (e.g. "only if...", "but not on weekends").
-- icon must be one of: ${ICONS.join(", ")} — pick whichever best represents that step (calendar for time/date/meeting triggers, mic for spoken-phrase triggers, mail for email, message for chat apps like Slack, bulb for lights, lock for door locks, check for tasks, bell for notifications, music for audio, doc for notes/documents, hash for channels/keywords).
+- icon must be one of: ${ICONS.join(", ")} — pick whichever best represents that step (calendar for time/date/meeting triggers, mic for spoken-phrase triggers, mail for email, message for chat apps like Slack, bulb for lights, lock for door locks, check for tasks, bell for notifications, music for audio, doc for notes/documents, hash for channels/keywords, grid for spreadsheets).
 - app identifies which specific connected app a step needs, so we can show its logo and let the user connect it. Set it to one of: ${CONNECTOR_DESCRIPTIONS} when the step clearly matches one of those apps. Otherwise (a different app we don't support yet, a generic phone/voice trigger, or a time-based trigger) set app to "none".
 - risk applies only to action steps: "read-only" (just observes data, e.g. summarizing), "reversible" (an easily-undone side effect, e.g. a Slack status, dimming lights, blocking calendar time), or "confirm" (irreversible or higher-stakes, e.g. locking/unlocking a door, sending an email to someone else, deleting something).
 - If the request is genuinely too vague to build anything (no discernible trigger or action at all), set clarifying=true, steps=[], and ask exactly one focused clarifying question in reply.

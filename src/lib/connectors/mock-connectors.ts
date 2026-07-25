@@ -2,7 +2,7 @@ import "server-only";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { MOCK_CONNECTOR_IDS, type ConnectorId } from "@/lib/connector-registry";
 
-export type MockConnectorId = Exclude<ConnectorId, "google_calendar">;
+export type MockConnectorId = Exclude<ConnectorId, "google_calendar" | "google_sheets">;
 
 export function isMockConnectorId(value: string): value is MockConnectorId {
   return (MOCK_CONNECTOR_IDS as string[]).includes(value);

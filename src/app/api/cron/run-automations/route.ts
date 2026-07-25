@@ -5,7 +5,8 @@ import {
   type AutomationDoc,
 } from "@/lib/firestore/automations";
 import { createActivityEntry } from "@/lib/firestore/activity";
-import { isConnected, createCalendarEvent } from "@/lib/connectors/google-calendar";
+import { isConnected as isCalendarConnected, createCalendarEvent } from "@/lib/connectors/google-calendar";
+import { isConnected as isSheetsConnected, appendRow } from "@/lib/connectors/google-sheets";
 import { parseSchedule, isDueToday } from "@/lib/automation-schedule";
 import type { LastRun } from "@/lib/automations";
 
@@ -44,16 +45,20 @@ export async function GET(req: Request) {
 async function runAutomation(id: string, data: AutomationDoc, now: Date) {
   const owner = { userId: data.ownerId, orgId: data.orgId };
   const actionSteps = data.steps.filter((s) => s.kind === "action");
-  const calendarStep = actionSteps.find((s) => s.icon === "calendar");
-  const otherSteps = actionSteps.filter((s) => s.icon !== "calendar");
+  const calendarStep = actionSteps.find((s) => s.app === "google_calendar");
+  const sheetsStep = actionSteps.find((s) => s.app === "google_sheets");
+  const otherSteps = actionSteps.filter(
+    (s) => s.app !== "google_calendar" && s.app !== "google_sheets",
+  );
 
-  let outcome: LastRun["outcome"] = "success";
   const summaryParts: string[] = [];
+  let anySucceeded = false;
+  let anyFailed = false;
 
   if (calendarStep) {
-    const connected = await isConnected(data.ownerId);
+    const connected = await isCalendarConnected(data.ownerId);
     if (!connected) {
-      outcome = "failed";
+      anyFailed = true;
       summaryParts.push("Calendar step skipped — Google Calendar isn't connected.");
     } else {
       try {
@@ -65,13 +70,47 @@ async function runAutomation(id: string, data: AutomationDoc, now: Date) {
           endISO: end.toISOString(),
         });
         summaryParts.push(`Created a calendar event: "${data.name}".`);
+        anySucceeded = true;
       } catch (err) {
-        outcome = "failed";
+        anyFailed = true;
         summaryParts.push(
           `Couldn't create the calendar event — ${err instanceof Error ? err.message : "unknown error"}.`,
         );
       }
     }
+  }
+
+  if (sheetsStep) {
+    const connected = await isSheetsConnected(data.ownerId);
+    if (!connected) {
+      anyFailed = true;
+      summaryParts.push("Sheets step skipped — Google Sheets isn't connected.");
+    } else {
+      try {
+        const { updatedRange } = await appendRow(data.ownerId, {
+          values: [now.toISOString(), data.name, "Triggered automatically by Caliber"],
+        });
+        summaryParts.push(`Logged a row to Google Sheets (${updatedRange}).`);
+        anySucceeded = true;
+      } catch (err) {
+        anyFailed = true;
+        summaryParts.push(
+          `Couldn't log to Google Sheets — ${err instanceof Error ? err.message : "unknown error"}.`,
+        );
+      }
+    }
+  }
+
+  let outcome: LastRun["outcome"];
+  if (!calendarStep && !sheetsStep) {
+    // Nothing real to attempt at all — not a failure, just not connected to anything real yet.
+    outcome = "partial";
+  } else if (anyFailed && anySucceeded) {
+    outcome = "partial";
+  } else if (anyFailed) {
+    outcome = "failed";
+  } else {
+    outcome = "success";
   }
 
   if (otherSteps.length > 0) {

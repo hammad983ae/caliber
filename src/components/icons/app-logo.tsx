@@ -23,6 +23,20 @@ export function AppLogo({ app, className }: { app: ConnectorId; className?: stri
           </text>
         </svg>
       );
+    case "google_sheets":
+      return (
+        <svg viewBox="0 0 36 36" className={className}>
+          <rect width="36" height="36" rx="8" fill="#fff" stroke="#e2e2e5" strokeWidth="1" />
+          <path d="M9 4h13l5 5v22a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" fill="#0F9D58" />
+          <path d="M22 4v4a1 1 0 0 0 1 1h4" fill="#0b7a43" />
+          <rect x="11.5" y="13" width="13" height="15" rx="1" fill="#fff" />
+          <path
+            d="M11.5 17.7h13M11.5 22.3h13M16.3 13v15M20.7 13v15"
+            stroke="#0F9D58"
+            strokeWidth="1.1"
+          />
+        </svg>
+      );
     case "gmail":
       return (
         <svg viewBox="0 0 36 36" className={className}>

@@ -9,7 +9,9 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ToggleSwitch } from "@/components/dashboard/toggle-switch";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { useAutomations } from "@/components/dashboard/automations-context";
-import { runCalendarAutomation } from "@/app/dashboard/actions";
+import { runAutomationNow } from "@/app/dashboard/actions";
+import { CONNECTORS } from "@/lib/connector-registry";
+import type { ConnectorStatus } from "@/hooks/use-connector-status";
 
 const outcomeColor: Record<NonNullable<Automation["lastRun"]>["outcome"], string> = {
   success: "text-emerald-600 dark:text-emerald-400",
@@ -19,10 +21,10 @@ const outcomeColor: Record<NonNullable<Automation["lastRun"]>["outcome"], string
 
 export function AutomationCard({
   automation,
-  googleCalendarConnected = false,
+  connectorStatus = {},
 }: {
   automation: Automation;
-  googleCalendarConnected?: boolean;
+  connectorStatus?: ConnectorStatus;
 }) {
   const { toggleStatus, approveAutomation, rejectAutomation, setAlwaysAllow, refresh } =
     useAutomations();
@@ -35,10 +37,12 @@ export function AutomationCard({
   );
 
   const hasConfirmRisk = automation.steps.some((s) => s.risk === "confirm");
-  const canRunOnCalendar =
+  const realSteps = automation.steps.filter(
+    (s) => s.kind === "action" && s.app && CONNECTORS[s.app].real,
+  );
+  const canRun =
     automation.status === "active" &&
-    automation.connectors.includes("calendar") &&
-    googleCalendarConnected;
+    realSteps.some((s) => s.app && connectorStatus[s.app]);
 
   const handleToggle = () => {
     const turningOn = automation.status !== "active";
@@ -52,12 +56,10 @@ export function AutomationCard({
   const handleRunNow = async () => {
     setRunning(true);
     setRunResult(null);
-    const result = await runCalendarAutomation(automation.id, automation.name);
+    const result = await runAutomationNow(automation.id, automation.name, automation.steps);
     setRunning(false);
     setRunResult(
-      result.ok
-        ? { ok: true, message: "Created a real event on your calendar.", link: result.link }
-        : { ok: false, message: result.error },
+      result.ok ? { ok: true, message: result.message, link: result.link } : { ok: false, message: result.error },
     );
     refresh().catch(() => {});
   };
@@ -148,11 +150,11 @@ export function AutomationCard({
         </div>
       </div>
 
-      {canRunOnCalendar && (
+      {canRun && (
         <div className="flex flex-col gap-2 border-t border-black/5 pt-4 dark:border-white/10">
           <div className="flex items-center justify-between">
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Includes a real Google Calendar step — run it for real right now.
+              Includes a real connected step — run it for real right now.
             </p>
             <button
               onClick={handleRunNow}
@@ -169,7 +171,7 @@ export function AutomationCard({
               {runResult.message}{" "}
               {runResult.link && (
                 <a href={runResult.link} target="_blank" rel="noreferrer" className="underline">
-                  View on Google Calendar
+                  View it
                 </a>
               )}
             </p>

@@ -1,5 +1,6 @@
 export type ConnectorId =
   | "google_calendar"
+  | "google_sheets"
   | "gmail"
   | "slack"
   | "notion"
@@ -17,6 +18,7 @@ export interface ConnectorInfo {
 
 export const CONNECTORS: Record<ConnectorId, ConnectorInfo> = {
   google_calendar: { id: "google_calendar", name: "Google Calendar", icon: "calendar", real: true },
+  google_sheets: { id: "google_sheets", name: "Google Sheets", icon: "grid", real: true },
   gmail: { id: "gmail", name: "Gmail", icon: "mail", real: false },
   slack: { id: "slack", name: "Slack", icon: "message", real: false },
   notion: { id: "notion", name: "Notion", icon: "doc", real: false },
