@@ -1,5 +1,6 @@
 import "server-only";
 import type { FlowStep, FlowStepKind, StepRisk } from "@/lib/automations";
+import { CONNECTORS, CONNECTOR_IDS, isConnectorId } from "@/lib/connector-registry";
 
 const MODEL = "gemini-2.5-flash";
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -20,6 +21,11 @@ const ICONS = [
 
 const KINDS: FlowStepKind[] = ["trigger", "condition", "action"];
 const RISKS: StepRisk[] = ["read-only", "reversible", "confirm"];
+const APP_VALUES = [...CONNECTOR_IDS, "none"] as const;
+
+const CONNECTOR_DESCRIPTIONS = CONNECTOR_IDS.map((id) => `${id} (${CONNECTORS[id].name})`).join(
+  ", ",
+);
 
 const SYSTEM_INSTRUCTION = `
 You are Caliber's automation-builder assistant. Users describe, in their own words, something they want automated — Caliber runs it on their behalf. Turn each request into a short trigger + action flow.
@@ -27,9 +33,10 @@ You are Caliber's automation-builder assistant. Users describe, in their own wor
 Rules:
 - Every automation needs exactly one "trigger" step (what starts it) and one or more "action" steps (what it does). Add a "condition" step between them only if the user described one (e.g. "only if...", "but not on weekends").
 - icon must be one of: ${ICONS.join(", ")} — pick whichever best represents that step (calendar for time/date/meeting triggers, mic for spoken-phrase triggers, mail for email, message for chat apps like Slack, bulb for lights, lock for door locks, check for tasks, bell for notifications, music for audio, doc for notes/documents, hash for channels/keywords).
+- app identifies which specific connected app a step needs, so we can show its logo and let the user connect it. Set it to one of: ${CONNECTOR_DESCRIPTIONS} when the step clearly matches one of those apps. Otherwise (a different app we don't support yet, a generic phone/voice trigger, or a time-based trigger) set app to "none".
 - risk applies only to action steps: "read-only" (just observes data, e.g. summarizing), "reversible" (an easily-undone side effect, e.g. a Slack status, dimming lights, blocking calendar time), or "confirm" (irreversible or higher-stakes, e.g. locking/unlocking a door, sending an email to someone else, deleting something).
 - If the request is genuinely too vague to build anything (no discernible trigger or action at all), set clarifying=true, steps=[], and ask exactly one focused clarifying question in reply.
-- Otherwise set clarifying=false, populate steps with the full current draft (not a diff), and write a short (1-2 sentence) conversational reply confirming what you set up.
+- Otherwise set clarifying=false, populate steps with the full current draft (not a diff), and write a short (1-2 sentence) conversational reply confirming what you set up. If part of the request needs an app we don't support yet, still include that step (app="none") and mention the limitation briefly in reply.
 - When continuing an existing draft, treat the given draft steps as the current state and return the complete updated list — keep what's still relevant, change or add only what the new message asks for.
 - Keep descriptions short, concrete, and in plain English (e.g. "Block 3 hours as 'Focus time'", not "Trigger calendar API").
 `.trim();
@@ -48,8 +55,9 @@ const RESPONSE_SCHEMA = {
           icon: { type: "STRING", enum: [...ICONS] },
           description: { type: "STRING" },
           risk: { type: "STRING", enum: RISKS },
+          app: { type: "STRING", enum: [...APP_VALUES] },
         },
-        required: ["kind", "icon", "description"],
+        required: ["kind", "icon", "description", "app"],
       },
     },
   },
@@ -110,7 +118,7 @@ export async function generateAutomationTurn(
   const parsed = JSON.parse(text) as {
     reply: string;
     clarifying: boolean;
-    steps: Array<{ kind: string; icon: string; description: string; risk?: string }>;
+    steps: Array<{ kind: string; icon: string; description: string; risk?: string; app?: string }>;
   };
 
   const steps: FlowStep[] = parsed.steps.map((s) => ({
@@ -118,6 +126,7 @@ export async function generateAutomationTurn(
     icon: s.icon,
     description: s.description,
     risk: (RISKS as string[]).includes(s.risk ?? "") ? (s.risk as StepRisk) : undefined,
+    app: s.app && isConnectorId(s.app) ? s.app : undefined,
   }));
 
   return { reply: parsed.reply, clarifying: parsed.clarifying, steps };

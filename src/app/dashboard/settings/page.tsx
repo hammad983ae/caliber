@@ -1,19 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
-import { ConnectorIcon } from "@/components/icons/connector-icon";
+import { AppLogo } from "@/components/icons/app-logo";
 import { ToggleSwitch } from "@/components/dashboard/toggle-switch";
 import { TeamSection } from "@/components/dashboard/team-section";
-
-const mockApps = [
-  { name: "Gmail", icon: "mail", connected: true },
-  { name: "Slack", icon: "message", connected: true },
-  { name: "Philips Hue", icon: "bulb", connected: false },
-  { name: "Notion", icon: "doc", connected: false },
-  { name: "Spotify", icon: "music", connected: false },
-];
+import { CONNECTORS, MOCK_CONNECTOR_IDS, type ConnectorId } from "@/lib/connector-registry";
+import { useConnectorStatus } from "@/hooks/use-connector-status";
 
 const CONNECTOR_ERROR_MESSAGES: Record<string, string> = {
   not_configured: "Google Calendar isn't configured on this deployment yet.",
@@ -35,9 +29,8 @@ function SettingsContent() {
   const { user } = useUser();
   const clerk = useClerk();
   const searchParams = useSearchParams();
-  const [connections, setConnections] = useState(
-    Object.fromEntries(mockApps.map((a) => [a.name, a.connected])),
-  );
+  const { status, loading: statusLoading, refresh } = useConnectorStatus();
+  const [busyConnector, setBusyConnector] = useState<ConnectorId | null>(null);
   const [notifications, setNotifications] = useState({
     failures: true,
     weeklySummary: true,
@@ -48,10 +41,6 @@ function SettingsContent() {
   const redirectError = searchParams.get("connector_error");
   const redirectDebug = searchParams.get("connector_debug");
 
-  const [gcalConnected, setGcalConnected] = useState<boolean | null>(
-    redirectConnected ? true : null,
-  );
-  const [gcalBusy, setGcalBusy] = useState(false);
   const [gcalNotice, setGcalNotice] = useState<string | null>(() => {
     if (redirectConnected) return "Google Calendar connected.";
     if (redirectError) {
@@ -61,21 +50,24 @@ function SettingsContent() {
     return null;
   });
 
-  useEffect(() => {
-    fetch("/api/connectors/status")
-      .then((res) => res.json())
-      .then((data) => setGcalConnected(Boolean(data.google_calendar)))
-      .catch(() => setGcalConnected(false));
-  }, []);
-
   const handleDisconnectGoogleCalendar = async () => {
-    setGcalBusy(true);
+    setBusyConnector("google_calendar");
     try {
       await fetch("/api/connectors/google-calendar/disconnect", { method: "POST" });
-      setGcalConnected(false);
+      await refresh();
       setGcalNotice("Google Calendar disconnected.");
     } finally {
-      setGcalBusy(false);
+      setBusyConnector(null);
+    }
+  };
+
+  const handleToggleMockConnector = async (id: ConnectorId, connected: boolean) => {
+    setBusyConnector(id);
+    try {
+      await fetch(`/api/connectors/mock/${id}`, { method: connected ? "DELETE" : "POST" });
+      await refresh();
+    } finally {
+      setBusyConnector(null);
     }
   };
 
@@ -133,20 +125,18 @@ function SettingsContent() {
         <ul className="mt-4 flex flex-col divide-y divide-black/5 dark:divide-white/10">
           <li className="flex items-center justify-between py-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/15 to-violet-500/15 text-indigo-600 dark:text-indigo-300">
-                <ConnectorIcon icon="calendar" className="h-4 w-4" />
-              </span>
+              <AppLogo app="google_calendar" className="h-8 w-8 rounded-lg shadow-sm" />
               <span className="text-sm font-medium">Google Calendar</span>
             </div>
-            {gcalConnected === null ? (
+            {statusLoading ? (
               <span className="text-xs text-zinc-400">Checking…</span>
-            ) : gcalConnected ? (
+            ) : status.google_calendar ? (
               <button
                 onClick={handleDisconnectGoogleCalendar}
-                disabled={gcalBusy}
+                disabled={busyConnector === "google_calendar"}
                 className="rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-rose-500/10 hover:text-rose-700 disabled:opacity-50 dark:text-emerald-300 dark:hover:text-rose-300"
               >
-                {gcalBusy ? "Disconnecting…" : "Connected"}
+                {busyConnector === "google_calendar" ? "Disconnecting…" : "Connected"}
               </button>
             ) : (
               <a
@@ -158,28 +148,29 @@ function SettingsContent() {
             )}
           </li>
 
-          {mockApps.map((app) => (
-            <li key={app.name} className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/15 to-violet-500/15 text-indigo-600 dark:text-indigo-300">
-                  <ConnectorIcon icon={app.icon} className="h-4 w-4" />
-                </span>
-                <span className="text-sm font-medium">{app.name}</span>
-              </div>
-              <button
-                onClick={() =>
-                  setConnections((prev) => ({ ...prev, [app.name]: !prev[app.name] }))
-                }
-                className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                  connections[app.name]
-                    ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300"
-                    : "bg-black/[.04] text-zinc-600 hover:bg-black/[.07] dark:bg-white/[.06] dark:text-zinc-300 dark:hover:bg-white/[.1]"
-                }`}
-              >
-                {connections[app.name] ? "Connected" : "Connect"}
-              </button>
-            </li>
-          ))}
+          {MOCK_CONNECTOR_IDS.map((id) => {
+            const info = CONNECTORS[id];
+            const connected = Boolean(status[id]);
+            return (
+              <li key={id} className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <AppLogo app={id} className="h-8 w-8 rounded-lg shadow-sm" />
+                  <span className="text-sm font-medium">{info.name}</span>
+                </div>
+                <button
+                  onClick={() => handleToggleMockConnector(id, connected)}
+                  disabled={statusLoading || busyConnector === id}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                    connected
+                      ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300"
+                      : "bg-black/[.04] text-zinc-600 hover:bg-black/[.07] dark:bg-white/[.06] dark:text-zinc-300 dark:hover:bg-white/[.1]"
+                  }`}
+                >
+                  {busyConnector === id ? "…" : connected ? "Connected" : "Connect"}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

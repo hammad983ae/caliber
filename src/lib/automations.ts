@@ -1,3 +1,5 @@
+import type { ConnectorId } from "@/lib/connector-registry";
+
 export type AutomationStatus =
   | "active"
   | "paused"
@@ -14,6 +16,8 @@ export interface FlowStep {
   icon: string;
   description: string;
   risk?: StepRisk;
+  /** The specific known app this step needs connected, if any (unset for voice/time triggers or unsupported apps). */
+  app?: ConnectorId;
 }
 
 export interface LastRun {
