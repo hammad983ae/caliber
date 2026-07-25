@@ -23,6 +23,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 - `src/app/api/cron/run-automations` — the scheduled runner (see below)
 - `src/lib/firestore` — server-only Firestore data-access layer (`automations.ts`, `activity.ts`)
 - `src/lib/automation-schedule.ts` — parses a trigger step's free-text description into a daily/weekly cadence
+- `src/lib/ai/automation-builder.ts` — calls Gemini to turn a chat message into trigger/action steps for the create-automation screen
 - `src/components/landing` — landing page sections
 - `src/lib/firebase` — Firebase client (`client.ts`) and admin (`admin.ts`) SDK setup
 - `src/proxy.ts` — Clerk auth gate (Next.js 16 Proxy, formerly Middleware)
@@ -45,5 +46,6 @@ See `.env.example` for the full list:
 - **Clerk** — `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` from the [Clerk dashboard](https://dashboard.clerk.com).
 - **Firebase (client)** — `NEXT_PUBLIC_FIREBASE_*` from your Firebase project settings.
 - **Firebase (admin)** — for server-side Firestore access, either `FIREBASE_SERVICE_ACCOUNT_KEY` (the full service account JSON as a single-line string) or the individual `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` fields (this is how Vercel's Firebase integration sets them).
+- **Gemini** — `GEMINI_API_KEY`, a free-tier key from [Google AI Studio](https://aistudio.google.com/apikey), powers the create-automation chat's intent parsing.
 
 Before any of this works, the Firebase project needs an actual Firestore database provisioned — Firebase Console → **Build → Firestore Database → Create database** (Native mode, any region). A project can exist with Auth/Storage configured but no Firestore instance yet, which surfaces as a `5 NOT_FOUND` error from the Admin SDK. The `automations` and `activity` collections themselves need no manual setup — they're created automatically on first write.

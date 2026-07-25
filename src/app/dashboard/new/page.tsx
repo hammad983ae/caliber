@@ -8,7 +8,7 @@ import { FlowPanel } from "@/components/dashboard/flow-panel";
 import { ConfirmationModal } from "@/components/dashboard/confirmation-modal";
 import { ToggleSwitch } from "@/components/dashboard/toggle-switch";
 import { useAutomations } from "@/components/dashboard/automations-context";
-import { respondTo } from "@/lib/mock-automation-builder";
+import { generateAutomationTurn } from "@/app/dashboard/new/actions";
 import type { AutomationStatus, FlowStep } from "@/lib/automations";
 
 const GREETING: ChatMessage = {
@@ -29,29 +29,30 @@ export default function NewAutomationPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [steps, setSteps] = useState<FlowStep[]>([]);
   const [thinking, setThinking] = useState(false);
-  const [turnIndex, setTurnIndex] = useState(0);
   const [shareWithTeam, setShareWithTeam] = useState(false);
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const handleSend = (text: string) => {
-    setMessages((prev) => [...prev, { role: "user", text }]);
+  const handleSend = async (text: string) => {
+    const history = [...messages, { role: "user" as const, text }];
+    setMessages(history);
     setThinking(true);
 
-    setTimeout(() => {
-      const turn = respondTo(text, steps, turnIndex);
-      setSteps(turn.steps);
-      setMessages((prev) => [...prev, { role: "assistant", text: turn.reply }]);
-      setThinking(false);
-      setTurnIndex((i) => i + 1);
-    }, 650);
+    const result = await generateAutomationTurn(history, steps);
+
+    if (result.ok) {
+      setSteps(result.turn.steps);
+      setMessages((prev) => [...prev, { role: "assistant", text: result.turn.reply }]);
+    } else {
+      setMessages((prev) => [...prev, { role: "assistant", text: result.error }]);
+    }
+    setThinking(false);
   };
 
   const handleReset = () => {
     setMessages([GREETING]);
     setSteps([]);
-    setTurnIndex(0);
     setShareWithTeam(false);
     setRequiresApproval(false);
   };
