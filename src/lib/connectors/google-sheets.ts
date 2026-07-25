@@ -15,8 +15,8 @@ interface StoredTokens {
   expiresAt: number;
   scope: string;
   connectedAt: number;
-  spreadsheetId?: string;
-  sheetName?: string;
+  spreadsheetId: string | null;
+  sheetName: string | null;
 }
 
 function tokenDoc(userId: string) {
@@ -47,8 +47,8 @@ export async function saveTokens(
     expiresAt: Date.now() + tokens.expires_in * 1000,
     scope: tokens.scope,
     connectedAt: prev?.connectedAt ?? Date.now(),
-    spreadsheetId: prev?.spreadsheetId,
-    sheetName: prev?.sheetName,
+    spreadsheetId: prev?.spreadsheetId ?? null,
+    sheetName: prev?.sheetName ?? null,
   };
 
   await ref.set(record);
