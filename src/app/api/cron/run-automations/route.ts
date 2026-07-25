@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import {
   listActiveAutomations,
   recordAutomationRun,
+  recordRowCountBaseline,
   type AutomationDoc,
 } from "@/lib/firestore/automations";
 import { createActivityEntry } from "@/lib/firestore/activity";
 import { isConnected as isCalendarConnected, createCalendarEvent } from "@/lib/connectors/google-calendar";
-import { isConnected as isSheetsConnected, appendRow } from "@/lib/connectors/google-sheets";
-import { parseSchedule, isDueToday } from "@/lib/automation-schedule";
+import {
+  isConnected as isSheetsConnected,
+  appendRow,
+  getRowCount,
+} from "@/lib/connectors/google-sheets";
+import { parseSchedule, isDueToday, isSheetRowTrigger } from "@/lib/automation-schedule";
 import type { LastRun } from "@/lib/automations";
 
 /**
@@ -28,21 +33,62 @@ export async function GET(req: Request) {
 
   for (const { id, data } of automations) {
     const triggerStep = data.steps.find((s) => s.kind === "trigger");
-    const rule = triggerStep ? parseSchedule(triggerStep.description) : null;
+    const description = triggerStep?.description ?? "";
+    const rule = parseSchedule(description);
 
-    if (!isDueToday(rule, now, data.lastRunAtISO)) {
-      results.push({ id, ran: false });
+    if (rule) {
+      if (isDueToday(rule, now, data.lastRunAtISO)) {
+        await runAutomation(id, data, now);
+        results.push({ id, ran: true });
+      } else {
+        results.push({ id, ran: false });
+      }
       continue;
     }
 
-    await runAutomation(id, data, now);
-    results.push({ id, ran: true });
+    if (isSheetRowTrigger(description)) {
+      const rowCount = await checkRowTriggerDue(id, data);
+      if (rowCount !== null) {
+        await runAutomation(id, data, now, rowCount);
+        results.push({ id, ran: true });
+      } else {
+        results.push({ id, ran: false });
+      }
+      continue;
+    }
+
+    results.push({ id, ran: false });
   }
 
   return NextResponse.json({ checked: automations.length, ran: results.filter((r) => r.ran).length });
 }
 
-async function runAutomation(id: string, data: AutomationDoc, now: Date) {
+/**
+ * Returns the current row count if the trigger is due (count grew since the
+ * last check), or null if it isn't due yet — including the very first check,
+ * which just records a baseline instead of firing on rows that already existed.
+ */
+async function checkRowTriggerDue(id: string, data: AutomationDoc): Promise<number | null> {
+  try {
+    const connected = await isSheetsConnected(data.ownerId);
+    if (!connected) return null;
+
+    const count = await getRowCount(data.ownerId);
+    if (count === null) return null;
+
+    if (typeof data.lastRowCount !== "number") {
+      await recordRowCountBaseline(id, count);
+      return null;
+    }
+
+    return count > data.lastRowCount ? count : null;
+  } catch (err) {
+    console.error(`[cron] failed to check row count for automation ${id}:`, err);
+    return null;
+  }
+}
+
+async function runAutomation(id: string, data: AutomationDoc, now: Date, rowCount?: number) {
   const owner = { userId: data.ownerId, orgId: data.orgId };
   const actionSteps = data.steps.filter((s) => s.kind === "action");
   const calendarStep = actionSteps.find((s) => s.app === "google_calendar");
@@ -126,6 +172,7 @@ async function runAutomation(id: string, data: AutomationDoc, now: Date) {
   await recordAutomationRun(id, {
     lastRun: { at: "Just now", outcome, detail },
     lastRunAtISO: nowISO,
+    ...(rowCount !== undefined ? { lastRowCount: rowCount } : {}),
   });
 
   await createActivityEntry(owner, {

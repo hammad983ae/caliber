@@ -13,6 +13,8 @@ export interface AutomationDoc {
   lastRun: LastRun | null;
   /** Machine-readable timestamp of the last run (manual or automatic), used to avoid double-firing the same day. */
   lastRunAtISO: string | null;
+  /** Baseline row count for "new row in a spreadsheet" triggers — null until the runner has checked once. */
+  lastRowCount: number | null;
   scope: "personal" | "team";
   orgId: string | null;
   alwaysAllow: boolean;
@@ -77,6 +79,7 @@ export async function createAutomation(
     steps: input.steps,
     lastRun: null,
     lastRunAtISO: null,
+    lastRowCount: null,
     scope: owner.orgId ? "team" : "personal",
     orgId: owner.orgId,
     alwaysAllow: input.alwaysAllow ?? false,
@@ -136,7 +139,12 @@ export async function listActiveAutomations(): Promise<{ id: string; data: Autom
 /** System-level write used by the scheduled runner, which has no single owner making the request. */
 export async function recordAutomationRun(
   id: string,
-  patch: { lastRun: LastRun; lastRunAtISO: string },
+  patch: { lastRun: LastRun; lastRunAtISO: string; lastRowCount?: number },
 ): Promise<void> {
   await getAdminDb().collection(COLLECTION).doc(id).update(patch);
+}
+
+/** Records a row-count baseline without logging a run — used the first time a "new row" trigger is checked. */
+export async function recordRowCountBaseline(id: string, count: number): Promise<void> {
+  await getAdminDb().collection(COLLECTION).doc(id).update({ lastRowCount: count });
 }

@@ -30,7 +30,11 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 
 ## Automatic runs
 
-Active automations whose trigger step reads as a recurring cadence (contains a weekday name, "every day", "daily", "every morning/evening/night", etc.) run on their own once a day via a [Vercel Cron Job](https://vercel.com/docs/cron-jobs) configured in `vercel.json`, hitting `/api/cron/run-automations`. Triggers with no real signal to watch (voice phrases, form submissions, presence) stay manual-only — there's nothing to schedule against yet.
+Active automations run on their own once a day via a [Vercel Cron Job](https://vercel.com/docs/cron-jobs) configured in `vercel.json`, hitting `/api/cron/run-automations`, if their trigger step matches one of two patterns:
+- **Time-based** — reads as a recurring cadence (contains a weekday name, "every day", "daily", "every morning/evening/night", etc).
+- **New spreadsheet row** — reads as "new row"/"row added"/"added to the sheet" etc. The runner compares the connected sheet's row count against what it saw on the last check; the very first check just records a baseline (so it doesn't fire on rows that already existed), and each later check fires once if the count grew, then updates the baseline so it doesn't re-fire on the same rows tomorrow.
+
+Triggers with no real signal to watch at all (voice phrases, form submissions, presence) stay manual-only — there's nothing to schedule against yet.
 
 When a run fires:
 - Any step using a real connector (Google Calendar, Google Sheets) actually executes, using the account connected by the automation's creator.
