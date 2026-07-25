@@ -35,6 +35,18 @@ export function parseSchedule(description: string): ScheduleRule {
 }
 
 /**
+ * Recognizes a "new row in a spreadsheet" style trigger. There's no push
+ * notification for this (see automation-runner.ts) — the runner instead
+ * compares the sheet's row count against what it saw last time, once a day.
+ */
+export function isSheetRowTrigger(description: string): boolean {
+  const text = description.toLowerCase();
+  return /new (row|entry|submission|line)|row (is )?added|added to (the )?(sheet|spreadsheet)/.test(
+    text,
+  );
+}
+
+/**
  * The runner only checks once a day (Vercel Cron's Hobby-plan limit), so
  * "due" means: matches today's cadence, and hasn't already run today.
  */
