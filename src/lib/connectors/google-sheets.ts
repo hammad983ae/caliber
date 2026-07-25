@@ -152,3 +152,23 @@ export async function appendRow(
   const data = (await res.json()) as { updates?: { updatedRange?: string } };
   return { updatedRange: data.updates?.updatedRange ?? sheetName };
 }
+
+/** Returns null when there's no spreadsheet configured yet, rather than throwing. */
+export async function getRowCount(userId: string): Promise<number | null> {
+  const { spreadsheetId, sheetName } = await getSheetConfig(userId);
+  if (!spreadsheetId) return null;
+
+  const accessToken = await getValidAccessToken(userId);
+  const range = encodeURIComponent(`${sheetName}!A:A`);
+
+  const res = await fetch(`${SHEETS_API}/${spreadsheetId}/values/${range}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to read Google Sheet: ${res.status} ${await res.text()}`);
+  }
+
+  const data = (await res.json()) as { values?: unknown[][] };
+  return data.values?.length ?? 0;
+}
